@@ -1,0 +1,112 @@
+name: vcpkg ci
+
+on:
+  workflow_dispatch:
+    inputs:
+      vcpkg-ref:
+        description: Git ref for microsoft/vcpkg
+        required: false
+        default: master
+  schedule:
+    - cron: "0 6 * * *"
+
+jobs:
+  vcpkg-ci:
+    name: ${{ matrix.triplet }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - triplet: x86-windows
+            runner: windows-latest
+          - triplet: x64-windows
+            runner: windows-latest
+          - triplet: x64-windows-release
+            runner: windows-latest
+          - triplet: x64-windows-static
+            runner: windows-latest
+          - triplet: x64-windows-static-md
+            runner: windows-latest
+          - triplet: arm64-windows
+            runner: windows-latest
+          - triplet: arm64-windows-static-md
+            runner: windows-latest
+          - triplet: arm64-osx
+            runner: macos-14
+          - triplet: x64-linux
+            runner: ubuntu-24.04
+          - triplet: arm64-linux
+            runner: ubuntu-24.04-arm
+          - triplet: arm-neon-android
+            runner: ubuntu-24.04
+            android: true
+          - triplet: x64-android
+            runner: ubuntu-24.04
+            android: true
+          - triplet: arm64-android
+            runner: ubuntu-24.04
+            android: true
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout workflow repository
+        uses: actions/checkout@v4
+
+      - name: Checkout microsoft/vcpkg
+        uses: actions/checkout@v4
+        with:
+          repository: microsoft/vcpkg
+          ref: ${{ inputs.vcpkg-ref || 'master' }}
+          path: vcpkg
+
+      - name: Set up MSVC
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Set up Java
+        if: matrix.android
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        if: matrix.android
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Android NDK
+        if: matrix.android
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r27c
+
+      - name: Bootstrap vcpkg (Windows)
+        if: runner.os == 'Windows'
+        working-directory: vcpkg
+        shell: cmd
+        run: bootstrap-vcpkg.bat
+
+      - name: Bootstrap vcpkg (non-Windows)
+        if: runner.os != 'Windows'
+        working-directory: vcpkg
+        run: ./bootstrap-vcpkg.sh
+
+      - name: Run vcpkg ci
+        run: |
+          python "$GITHUB_WORKSPACE/scripts/run_vcpkg_ci.py" \
+            --vcpkg-root "$GITHUB_WORKSPACE/vcpkg" \
+            --triplet "${{ matrix.triplet }}" \
+            --failure-dir "$GITHUB_WORKSPACE/failures/${{ matrix.triplet }}" \
+            --work-dir "${{ runner.temp }}/vcpkg-ci/${{ matrix.triplet }}"
+
+      - name: Upload failure logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failures-${{ matrix.triplet }}
+          path: failures/${{ matrix.triplet }}
+          if-no-files-found: error
