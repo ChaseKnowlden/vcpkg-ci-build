@@ -82,7 +82,7 @@ def main() -> int:
     work_dir.mkdir(parents=True, exist_ok=True)
 
     executable = vcpkg_executable(vcpkg_root)
-    ci_baseline = vcpkg_root / "ci.baseline.txt"
+    ci_baseline = vcpkg_root / "scripts" / "ci.baseline.txt"
     xunit_path = failure_dir / f"{args.triplet}-results.xml"
     hashes_path = failure_dir / "pr-hashes.json"
 
