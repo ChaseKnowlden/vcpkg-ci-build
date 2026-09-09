@@ -2,13 +2,11 @@ name: vcpkg ci
 
 on:
   workflow_dispatch:
-    inputs:
-      vcpkg-ref:
-        description: Git ref for microsoft/vcpkg
-        required: false
-        default: master
   schedule:
     - cron: "0 6 * * *"
+
+permissions:
+  contents: read
 
 jobs:
   vcpkg-ci:
@@ -55,13 +53,16 @@ jobs:
     steps:
       - name: Checkout workflow repository
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Checkout microsoft/vcpkg
         uses: actions/checkout@v4
         with:
           repository: microsoft/vcpkg
-          ref: ${{ inputs.vcpkg-ref || 'master' }}
+          ref: master
           path: vcpkg
+          persist-credentials: false
 
       - name: Set up MSVC
         if: runner.os == 'Windows'
