@@ -31,7 +31,7 @@ jobs:
           - triplet: arm64-windows-static-md
             runner: windows-latest
           - triplet: arm64-osx
-            runner: macos-14
+            runner: macos-26
           - triplet: x64-linux
             runner: ubuntu-24.04
           - triplet: arm64-linux
